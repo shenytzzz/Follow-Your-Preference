@@ -1,0 +1,106 @@
+sample:
+  logging_dir: logs
+  resolution: 512
+  enable_xformers_memory_efficient_attention: false
+  pretrained_model_name_or_path: runwayml/stable-diffusion-v1-5
+  output_dir: .../global_seed_42/local_seed_0 
+  sample_batch_size: 32 
+  mixed_precision: fp16
+  dataloader_num_workers: 8
+  save_step: 10000 
+  seed: 42
+  generator_seed: 0 
+  skip_batches: null
+  max_steps: 500 
+  train_json: /path/to/sample.json 
+
+train:
+  revision: null
+  variant: null
+  tokenizer_name: null
+  cache_dir: null
+  max_train_steps: null
+  num_train_epochs: 10000
+  gradient_accumulation_steps: 1
+  scale_lr: false
+  lr_scheduler: constant
+  lr_warmup_steps: 500
+  lr_num_cycles: 1
+  lr_power: 1.0
+  optimizer: AdamW
+  use_8bit_adam: false
+  adam_beta1: 0.9
+  adam_beta2: 0.999
+  adam_weight_decay: 0.01
+  adam_epsilon: 1.0e-08
+  max_grad_norm: 1.0
+  push_to_hub: false
+  hub_token: null
+  hub_model_id: null
+  logging_dir: logs
+  allow_tf32: false
+  enable_xformers_memory_efficient_attention: false
+  set_grads_to_none: false
+  dataset_name: null
+  dataset_config_name: null
+  image_column: image
+  conditioning_image_column: conditioning_image
+  caption_column: text
+  max_train_samples: null
+  proportion_empty_prompts: 0
+  validation_prompt:
+  - A cake on the table.
+  validation_image:
+  - ./test_image.jpg
+  validation_mask:
+  - ./test_mask.jpg
+  num_validation_images: 1
+  wandb_id: null
+  random_mask: false
+  weighting_scheme: none
+  logit_mean: 0.0
+  logit_std: 1.0
+  mode_scale: 1.29
+  height: 512
+  width: 512
+  max_sequence_length: 512
+  seed: 42
+  gradient_checkpointing: false
+  resume_from_checkpoint: null
+  checkpoints_total_limit: null
+  pretrained_model_name_or_path: runwayml/stable-diffusion-v1-5
+  # train_data_dir is no longer important as we save the data in BrushData to pngs
+  train_data_dir: ~/.cache/huggingface/hub/datasets--random123123--BrushData/snapshots/333cdc6dc928b6efdbe25c0b3943d1c67a85fc8f
+  train_json_dir: /path/to/results_list.json
+  resolution: 512
+  learning_rate: 1.0e-06 
+  train_batch_size: 8 
+  tracker_project_name: brushnet
+  validation_steps: 200 
+  checkpointing_steps: 1000 
+  train_steps: 2000
+  dataloader_num_workers: 8 
+  beta_dpo: 8000 
+  dpo_loss_weight: 1.0
+  mse_loss_weight: 0.0
+  output_dir: /root/test_env/runs/debug/brushnet
+  mixed_precision: bf16
+  report_to: wandb
+  guidance_scale: 1
+  train_base_model: true
+  dpo_new: false # Specify the actual losing sample as winning sample, and the actual winning sample as losing sample
+  dpo_mask: true
+  do_test: false
+  brushnet_model_name_or_path: /root/BrushNet/data/ckpt/segmentation_mask_brushnet_ckpt
+  note: null
+  metrics:
+    enable: true
+    score_file: /path/to/scores_with_ensemble.json
+    metric: ensemble 
+    scaling: 16 
+  lora:
+    enable: false
+    lora_layers: null
+    rank: 64
+    alpha: 128
+

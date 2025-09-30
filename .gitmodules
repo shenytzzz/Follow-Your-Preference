@@ -1,0 +1,12 @@
+[submodule "perception_models"]
+	path = perception_models
+	url = https://github.com/facebookresearch/perception_models.git
+	branch = main
+[submodule "t2v_metrics"]
+	path = t2v_metrics
+	url = https://github.com/linzhiqiu/t2v_metrics.git
+	branch = main
+[submodule "flux"]
+	path = flux
+	url = https://github.com/black-forest-labs/flux.git
+	branch = main
