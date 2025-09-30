@@ -112,11 +112,11 @@ Note
      ```bash
      # BrushNet
      accelerate launch \
-       --config_file /root/.cache/huggingface/accelerate/accelerate_default.yaml \
+       --config_file configs/accelerate_default.yaml \
        scripts/sample_brushnet.py
      # FLUX.1 Fill
      accelerate launch \
-       --config_file /root/.cache/huggingface/accelerate/accelerate_default.yaml \
+       --config_file configs/accelerate_default.yaml \
        scripts/sample_flux.py
      ```
 
@@ -147,7 +147,7 @@ Note
     ```
    - UnifiedReward only:
     ```bash
-    python /root/test_env/scripts/score_unifiedreward.py
+    python scripts/score_unifiedreward.py
       --annotation_path /path/to/annotation_list
       --output_dir /path/to/output
       --seed 0
