@@ -1,3 +1,5 @@
+# Follow-Your-Preference
+
 <!-- TOC -->
 
 - [Follow-Your-Prefence](#follow-your-prefence)
@@ -14,7 +16,7 @@
 
 <!-- /TOC -->
 
-# Follow-Your-Preference
+
 
 ## ⚙️ Installation 
 
