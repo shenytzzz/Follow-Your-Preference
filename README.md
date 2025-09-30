@@ -139,7 +139,7 @@ Note
     ```bash
     conda activate eval
     accelerate launch
-      --config_file /root/.cache/huggingface/accelerate/accelerate_default.yaml \
+      --config_file configs/accelerate_default.yaml \
       scripts/score.py \
       --metric <ensemble> \
       --annotation_path /path/to/annotation_list \
