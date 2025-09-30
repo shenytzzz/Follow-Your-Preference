@@ -3,6 +3,7 @@
 <!-- TOC -->
 
 - [Follow-Your-Prefence](#follow-your-prefence)
+    - [📝 Introduction](#-introduction)
     - [⚙️ Installation](#-installation)
         - [📦 Dataset](#-dataset)
         - [📚 Training and Inference](#-training-and-inference)
@@ -13,9 +14,24 @@
         - [🏋️ Preference Alignment Training](#-preference-alignment-training)
         - [💯 Evaluation](#-evaluation)
     - [🚀 Try Our Image Inpainting Model](#-try-our-image-inpainting-model)
+    - [📑 Citation](#-citation)
 
 <!-- /TOC -->
 
+
+## 📝 Introduction
+
+This repository contains the implementation code for paper:
+
+**Follow-Your-Preference: Towards Preference-Aligned Image Inpainting**
+
+[*arxiv preprint 2025*](https://www.arxiv.org/pdf/2509.23082)
+
+Yutao Shen✳, Junkun Yuan✳✉, Toru Aonishi, Hideki Nakayama, Yue Ma✉
+
+It studies image inpainting with preference alignment, revealing insights into its effectiveness, scalability, and challenges.
+
+<img src='result.png' width=800>
 
 
 ## ⚙️ Installation 
@@ -24,7 +40,7 @@ Our method has been implemented with python 3.12 and CUDA 12.1. Basically, you n
 - One for `inference` and `training` 
 - One for `scoring` and `evaluation`
 
-### 1) 📦 Dataset
+### 📦 Dataset
 
 1. Download BrushData
    - Hugging Face dataset: <https://huggingface.co/datasets/random123123/BrushData>
@@ -54,7 +70,7 @@ Our method has been implemented with python 3.12 and CUDA 12.1. Basically, you n
      ]
      ```
 
-### 2) 📚 Training and Inference
+### 📚 Training and Inference
 ```bash
 git clone --recursive https://github.com/shenytzzz/Follow-Your-Preference.git
 conda create -n train python=3.12
@@ -65,7 +81,7 @@ pip install -e ".[torch]"
 pip install omegaconf transformers==4.52.0 accelerate==1.6.0 datasets==3.5.0 deepspeed==0.17.1
 ```
 
-### 3) ⚽️ Score and Evaluation
+### ⚽️ Score and Evaluation
 ```bash
 git clone --recursive https://github.com/shenytzzz/Follow-Your-Preference.git
 conda create -n eval python=3.12
@@ -95,7 +111,7 @@ Note
 
 ## ✨ Basic Usage
 
-### 1) 📂 Generate Candidates
+### 📂 Generate Candidates
 
 1. Configure paths and seed
    - Set the JSON path from `Installation` and the seed `generator_seed` in either:
@@ -122,7 +138,7 @@ Note
 
 ---
 
-### 2) 🏷️ Construct Preference Data 
+### 🏷️ Construct Preference Data 
 
 1. Create annotation list
    - Follow **_Merge the annotations for sampled images_** in `scripts/merge_score_jsons.ipynb` to produce a *list-style* JSON for scoring.
@@ -158,7 +174,7 @@ Note
 
 ---
 
-### 3) 🏋️ Preference Alignment Training 
+### 🏋️ Preference Alignment Training 
 
 - For training, we use config files to manage everthing. You could find it in `configs/configs_<model>.yaml`.
 
@@ -178,7 +194,7 @@ Note
     scripts/train_brushnet_dpo.py
   ```
 
-### 4) 💯 Evaluation 
+### 💯 Evaluation 
 1. Generate images for testing
     ```bash
     conda activate train
@@ -294,4 +310,13 @@ We released our models on the huggingface, feel free to have a try 😉.
     image.save(f"output.png")
     ```
 
+## 📑 Citation
 
+```bash
+@article{yuan2023hap,
+  title={Follow-Your-Preference: Towards Preference-Aligned Image Inpainting},
+  author={Yutao Shen, Junkun Yuan, Toru Aonishi, Hideki Nakayama, Yue Ma},
+  journal={arXiv preprint},
+  year={2025}
+}
+```
