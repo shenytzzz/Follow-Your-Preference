@@ -29,7 +29,7 @@ This repository contains the implementation code for paper:
 
 Yutao Shen✳, Junkun Yuan✳✉, Toru Aonishi, Hideki Nakayama, Yue Ma✉
 
-It studies image inpainting with preference alignment, revealing insights into its effectiveness, scalability, and challenges.
+We study image inpainting with preference alignment, giving insights into its effectiveness, scalability, challenges.
 
 <img src='result.png' width=800>
 
@@ -313,7 +313,7 @@ We released our models on the huggingface, feel free to have a try 😉.
 ## 📑 Citation
 
 ```bash
-@article{yuan2023hap,
+@article{fyp2025,
   title={Follow-Your-Preference: Towards Preference-Aligned Image Inpainting},
   author={Yutao Shen, Junkun Yuan, Toru Aonishi, Hideki Nakayama, Yue Ma},
   journal={arXiv preprint},
