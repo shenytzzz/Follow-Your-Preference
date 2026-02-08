@@ -8,12 +8,12 @@
         - [📦 Dataset](#-dataset)
         - [📚 Training and Inference](#-training-and-inference)
         - [⚽️ Score and Evaluation](#-score-and-evaluation)
+    - [🚀 Try Our Image Inpainting Model](#-try-our-image-inpainting-model)
     - [✨ Basic Usage](#-basic-usage)
         - [📂 Generate Candidates](#-generate-candidates)
         - [🏷️ Construct Preference Data](#-construct-preference-data)
         - [🏋️ Preference Alignment Training](#-preference-alignment-training)
         - [💯 Evaluation](#-evaluation)
-    - [🚀 Try Our Image Inpainting Model](#-try-our-image-inpainting-model)
     - [📑 Citation](#-citation)
 
 <!-- /TOC -->
@@ -25,7 +25,7 @@ This repository contains the implementation code for paper:
 
 **Follow-Your-Preference: Towards Preference-Aligned Image Inpainting**
 
-[*arxiv preprint 2025*](https://www.arxiv.org/pdf/2509.23082)
+[International Conference on Learning Representations *(ICLR 2026)*](https://www.arxiv.org/pdf/2509.23082)
 
 Yutao Shen✳, Junkun Yuan✳✉, Toru Aonishi, Hideki Nakayama, Yue Ma✉
 
@@ -108,6 +108,80 @@ Note
   - Added file `brushnet.py` under `diffusers/src/diffusers/models/` 
   - Updated `__init__.py` accordingly. 
   - Replace the entire directory `unet` under `diffusers/src/diffusers/models/` with the one from `diffusers 0.27.0` to ensure the compatibility with **BrushNet**. _(Other models that rely on the `unet` from `diffusers 0.33.1` may not work as expected.)_
+
+
+## 🚀 Try Our Image Inpainting Model
+We released our models on the huggingface, feel free to have a try 😉.
+
+1. BruPA
+    ```python
+    from diffusers import StableDiffusionBrushNetPipeline, BrushNetModel, UniPCMultistepScheduler
+    import torch
+    import cv2
+    import numpy as np
+    from PIL import Image
+
+    brushnet = BrushNetModel.from_pretrained(
+        "shenyt/BruPA", 
+        subfolder="brushnet", 
+        torch_dtype=torch.float16
+    ).to("cuda")
+    pipe = StableDiffusionBrushNetPipeline.from_pretrained(
+        "runwayml/stable-diffusion-v1-5", brushnet=brushnet, torch_dtype=torch.float16
+    ).to("cuda")
+    pipe.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)
+
+    init_image = cv2.imread(...)[:,:,::-1]
+    mask_image = 1.*(cv2.imread(...).sum(-1)>255)[:,:,np.newaxis]
+    init_image = init_image * (1-mask_image)
+    init_image = Image.fromarray(init_image.astype(np.uint8)).convert("RGB")
+    mask_image = Image.fromarray(mask_image.astype(np.uint8).repeat(3,-1)*255).convert("RGB")
+
+    image = pipe(
+        caption, 
+        init_image, 
+        mask_image, 
+        num_inference_steps=50, 
+        generator=generator,
+        brushnet_conditioning_scale=brushnet_conditioning_scale
+    ).images[0]
+    image.save(f"output.png")
+    ```
+
+2. FluPA
+    ```python
+    import torch
+    from diffusers import FluxFillPipeline, FluxTransformer2DModel
+    from PIL import Image
+
+    image = Image.open(...).convert("RGB")
+    mask = Image.open(...).convert("RGB")
+    ckpt_path = ...
+
+    transformer = FluxTransformer2DModel.from_pretrained(
+        "shenyt/FluPA-fill",
+        subfolder="transformer",
+        torch_dtype=torch.bfloat16
+    ).to("cuda")
+    pipe = FluxFillPipeline.from_pretrained(
+        "black-forest-labs/FLUX.1-Fill-dev", 
+        torch_dtype=torch.bfloat16,
+        transformer=transformer
+    ).to("cuda")
+
+    image = pipe(
+        prompt="...",
+        image=image,
+        mask_image=mask,
+        height=512,
+        width=512,
+        guidance_scale=30,
+        num_inference_steps=20,
+        generator=torch.Generator("cpu").manual_seed(0)
+    ).images[0]
+    image.save(f"output.png")
+    ```
+
 
 ## ✨ Basic Usage
 
@@ -238,85 +312,13 @@ Note
       --image_dir /path/to/images/to/eval
     ```
 
-## 🚀 Try Our Image Inpainting Model
-We released our models on the huggingface, feel free to have a try 😉.
-
-1. BrushNet
-    ```python
-    from diffusers import StableDiffusionBrushNetPipeline, BrushNetModel, UniPCMultistepScheduler
-    import torch
-    import cv2
-    import numpy as np
-    from PIL import Image
-
-    brushnet = BrushNetModel.from_pretrained(
-        "shenyt/BruPA", 
-        subfolder="brushnet", 
-        torch_dtype=torch.float16
-    ).to("cuda")
-    pipe = StableDiffusionBrushNetPipeline.from_pretrained(
-        "runwayml/stable-diffusion-v1-5", brushnet=brushnet, torch_dtype=torch.float16
-    ).to("cuda")
-    pipe.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)
-
-    init_image = cv2.imread(...)[:,:,::-1]
-    mask_image = 1.*(cv2.imread(...).sum(-1)>255)[:,:,np.newaxis]
-    init_image = init_image * (1-mask_image)
-    init_image = Image.fromarray(init_image.astype(np.uint8)).convert("RGB")
-    mask_image = Image.fromarray(mask_image.astype(np.uint8).repeat(3,-1)*255).convert("RGB")
-
-    image = pipe(
-        caption, 
-        init_image, 
-        mask_image, 
-        num_inference_steps=50, 
-        generator=generator,
-        brushnet_conditioning_scale=brushnet_conditioning_scale
-    ).images[0]
-    image.save(f"output.png")
-    ```
-
-2. FLUX.1 Fill
-    ```python
-    import torch
-    from diffusers import FluxFillPipeline, FluxTransformer2DModel
-    from PIL import Image
-
-    image = Image.open(...).convert("RGB")
-    mask = Image.open(...).convert("RGB")
-    ckpt_path = ...
-
-    transformer = FluxTransformer2DModel.from_pretrained(
-        "shenyt/FluPA-fill",
-        subfolder="transformer",
-        torch_dtype=torch.bfloat16
-    ).to("cuda")
-    pipe = FluxFillPipeline.from_pretrained(
-        "black-forest-labs/FLUX.1-Fill-dev", 
-        torch_dtype=torch.bfloat16,
-        transformer=transformer
-    ).to("cuda")
-
-    image = pipe(
-        prompt="...",
-        image=image,
-        mask_image=mask,
-        height=512,
-        width=512,
-        guidance_scale=30,
-        num_inference_steps=20,
-        generator=torch.Generator("cpu").manual_seed(0)
-    ).images[0]
-    image.save(f"output.png")
-    ```
-
 ## 📑 Citation
 
-```bash
-@article{fyp2025,
+```
+@article{fyp2026,
   title={Follow-Your-Preference: Towards Preference-Aligned Image Inpainting},
   author={Yutao Shen, Junkun Yuan, Toru Aonishi, Hideki Nakayama, Yue Ma},
-  journal={arXiv preprint},
-  year={2025}
+  journal={International Conference on Learning Representations},
+  year={2026}
 }
 ```
