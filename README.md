@@ -245,6 +245,17 @@ We released our models on the huggingface, feel free to have a try 😉.
     ```
 4. Merge scores into one json file
    - Continue in `scripts/merge_score_jsons.ipynb` to attach scores to annotations for training.
+   - For CaEN/CaPO training, the merged score file should be keyed by `image_id` and contain the CaEN score for each candidate seed, for example:
+     ```json
+     {
+       "00022_000227560": {
+         "CaEN": {
+           "seed_0": 0.172487,
+           "seed_15": 0.712169
+         }
+       }
+     }
+     ```
 
 ---
 
@@ -269,6 +280,21 @@ We released our models on the huggingface, feel free to have a try 😉.
     --config_file configs/accelerate_default.yaml \
     scripts/train_dpo.py
   ```
+
+- CaEN/CaPO
+  - Set `train.loss: CaPO`, `train.metrics.metric: CaEN`, and point `train.metrics.score_file` to the merged CaEN score JSON.
+  - Set `train.train_json_dir` to the annotation JSON that contains `gt_image_path`, `caption`, `image_id`, `segmentation`, and the local candidate seed folders used by the preference pairs.
+  - The repository includes a tiny CaEN smoke dataset under `smoke_data/caen_train/` for checking that the training path runs and gradients flow:
+    ```bash
+    conda activate train
+    CUDA_VISIBLE_DEVICES="" \
+    DPO_CONFIG=smoke_data/caen_train/configs_dpo_caen_smoke_cpu_tiny.yaml \
+    python scripts/train_dpo.py
+    ```
+  - A successful smoke run prints a finite nonzero gradient check such as:
+    ```text
+    Smoke test gradient check passed: single_transformer_blocks.37.attn.to_v.bias grad_norm=8.987527e-02
+    ```
 
 - The original per-model scripts (`scripts/train_flux_dpo.py`, `scripts/train_brushnet_dpo.py`) and their configs (`configs/configs_flux.yaml`, `configs/configs_brushnet.yaml`) remain available as a reference.
 

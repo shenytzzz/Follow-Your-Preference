@@ -1,8 +1,4 @@
-# Unified DPO config for Flux Fill and BrushNet training.
-# Set `model_type` to 'flux' or 'brushnet'; the matching sub-block under
-# `sample:` / `train:` is merged on top of the shared defaults at runtime.
 model_type: flux
-
 sample:
   logging_dir: logs
   resolution: 512
@@ -21,20 +17,18 @@ sample:
     mixed_precision: bf16
   brushnet:
     pretrained_model_name_or_path: runwayml/stable-diffusion-v1-5
-    output_dir: .../global_seed_42/local_seed_0
+    output_dir: '.../global_seed_42/local_seed_0'
     sample_batch_size: 32
     save_step: 10000
     max_steps: 500
     mixed_precision: fp16
-
 train:
-  # ---- shared defaults ----
   revision: null
   variant: null
-  num_train_epochs: 10000
+  num_train_epochs: 1
   resume_from_checkpoint: null
-  max_train_steps: null
-  gradient_accumulation_steps: 2
+  max_train_steps: 1
+  gradient_accumulation_steps: 1
   scale_lr: false
   lr_scheduler: constant
   lr_warmup_steps: 500
@@ -61,63 +55,56 @@ train:
   caption_column: text
   max_train_samples: null
   proportion_empty_prompts: 0
-  validation_prompt:
-  - A cake on the table.
-  validation_image:
-  - ./test_image.jpg
-  validation_mask:
-  - ./test_mask.jpg
+  validation_prompt: null
+  validation_image: null
+  validation_mask: null
   num_validation_images: 1
   wandb_id: null
   random_mask: false
-  dpo_steps: 14000
   weighting_scheme: none
   logit_mean: 0.0
   logit_std: 1.0
   mode_scale: 1.29
-  height: 512
-  width: 512
-  max_sequence_length: 512
+  height: 64
+  width: 64
+  max_sequence_length: 16
   seed: 42
-  # train_data_dir is no longer important as we save the data in BrushData to pngs
-  train_data_dir: path/to/BrushData
-  train_json_dir: path/to/caen/annotations/results.json
-  resolution: 512
-  validation_steps: 3000
-  checkpointing_steps: 1000
-  train_steps: 14000
-  dataloader_num_workers: 8
+  train_data_dir: ~/.cache/huggingface/hub/datasets--random123123--BrushData/snapshots/333cdc6dc928b6efdbe25c0b3943d1c67a85fc8f
+  train_json_dir: smoke_data/flux_train/annotations/results.json
+  resolution: 64
+  validation_steps: 999999
+  checkpointing_steps: 999999
+  train_steps: 1
+  dataloader_num_workers: 0
   dpo_loss_weight: 1.0
   mse_loss_weight: 0.0
   mixed_precision: bf16
-  report_to: wandb
+  report_to: null
   guidance_scale: 1
   train_base_model: true
-  dpo_new: false # Specify the actual losing sample as winning sample, and the actual winning sample as losing sample
+  dpo_new: false
   dpo_mask: true
-  do_test: false
-  loss: CaPO
-  note: CaPO_CaEN_lr1e-05_beta100
+  do_test: true
+  note: null
   metrics:
-    enable: true
-    score_file: path/to/caen/scores/results.json
-    metric: CaEN
+    enable: false
+    score_file: /path/to/results_with_ensemble.json
+    metric: ensemble
     scaling: 16
   lora:
     enable: false
     lora_layers: null
     rank: 64
     alpha: 128
-  # ---- model-specific overrides ----
   flux:
     pretrained_model_name_or_path: black-forest-labs/FLUX.1-Fill-dev
-    gradient_checkpointing: true
-    checkpoints_total_limit: 1 # this will only delete the "pytorch_models" in older checkpoints but keep the "transformer"
+    gradient_checkpointing: false
+    checkpoints_total_limit: 1
     learning_rate: 1.0e-05
     train_batch_size: 1
-    beta_dpo: 100
+    beta_dpo: 2000
     tracker_project_name: flux
-    output_dir: runs/CaPO/CaEN/new_weighted/lr1e-05beta100
+    output_dir: smoke_data/flux_train/output
   brushnet:
     pretrained_model_name_or_path: runwayml/stable-diffusion-v1-5
     brushnet_model_name_or_path: path/to/brushnet/segmentation_mask_brushnet_ckpt
@@ -130,3 +117,7 @@ train:
     beta_dpo: 8000
     tracker_project_name: brushnet
     output_dir: runs/debug/brushnet
+  output_dir: smoke_data/flux_train/output
+  train_batch_size: 1
+  pretrained_model_name_or_path: black-forest-labs/FLUX.1-Fill-dev
+  gradient_checkpointing: false

@@ -1,0 +1,24 @@
+{
+  "smoke_caen_0001": {
+    "CaEN": {
+      "seed_0": 0.21000000000000002,
+      "seed_1": 0.76,
+      "draw": false,
+      "max_value": 0.76,
+      "max_seed": "seed_1",
+      "min_value": 0.21000000000000002,
+      "min_seed": "seed_0"
+    }
+  },
+  "smoke_caen_0002": {
+    "CaEN": {
+      "seed_0": 0.22,
+      "seed_1": 0.77,
+      "draw": false,
+      "max_value": 0.77,
+      "max_seed": "seed_1",
+      "min_value": 0.22,
+      "min_seed": "seed_0"
+    }
+  }
+}

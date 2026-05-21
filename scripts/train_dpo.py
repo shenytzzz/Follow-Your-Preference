@@ -178,10 +178,41 @@ def check_args(args, model_type):
         "ensemble",
         "random",
         "hpsv3",
+        "CaPO",
+        "CaEN",
     ]:
         raise ValueError(
-            f"Unsupported metric: {args.metrics.metric}, should be one of [clip_score, hps, pick_score, aesthetic_score, image_reward, vqa_score , unified_reward, pe_score, ensemble, random]."
+            f"Unsupported metric: {args.metrics.metric}, should be one of [clip_score, hps, pick_score, aesthetic_score, image_reward, vqa_score , unified_reward, pe_score, ensemble, random, hpsv3, CaPO, CaEN]."
         )
+
+    if args.loss not in ["dpo", "CaPO"]:
+        raise ValueError("`loss` must be either 'dpo' or 'CaPO'.")
+
+    if args.loss == "CaPO":
+        if not args.metrics.enable:
+            raise ValueError("CaPO loss requires `metrics.enable` to be true.")
+        if args.metrics.score_file is None:
+            raise ValueError("CaPO loss requires `metrics.score_file`.")
+
+
+def normalize_train_args(args):
+    if "loss" not in args or args.loss is None:
+        args.loss = "dpo"
+
+    if "train_steps" not in args or args.train_steps is None:
+        dpo_steps = args.get("dpo_steps", None)
+        if dpo_steps is not None:
+            args.train_steps = dpo_steps
+
+    if "dpo_steps" not in args or args.dpo_steps is None:
+        train_steps = args.get("train_steps", None)
+        if train_steps is not None:
+            args.dpo_steps = train_steps
+
+    if args.get("max_train_steps", None) is None and args.get("train_steps", None) is not None:
+        args.max_train_steps = args.train_steps
+
+    return args
 
 
 # ---------------------------------------------------------------------------
@@ -195,6 +226,7 @@ assert model_type in {"flux", "brushnet"}, (
     f"model_type must be 'flux' or 'brushnet', got {model_type!r}"
 )
 args = resolve_config(full_args, "train", model_type)
+args = normalize_train_args(args)
 check_args(args, model_type)
 args.output_dir = (
     os.path.join(args.output_dir, args.metrics.metric)
@@ -793,6 +825,9 @@ class MyDataset:
         inpainting_pixel_values = []
         conditioning_pixel_values = []
         conditioning_inpainting_pixel_values = []
+        if args.loss == "CaPO":
+            win_scores = []
+            lose_scores = []
 
         for example in examples:
             caption = example["caption"]
@@ -925,6 +960,11 @@ class MyDataset:
                 masks.append(torch.tensor(mask).permute(2, 0, 1))
                 input_ids.append(self.tokenize_captions(caption)[0])
 
+            if args.loss == "CaPO":
+                score_bucket = self.scores[image_id][args.metrics.metric]
+                win_scores.append(score_bucket[win_seed.replace("local_", "")])
+                lose_scores.append(score_bucket[lose_seed.replace("local_", "")])
+
         pixel_values = torch.stack(pixel_values)
         pixel_values = pixel_values.to(memory_format=torch.contiguous_format).float()
         inpainting_pixel_values = torch.stack(inpainting_pixel_values)
@@ -940,6 +980,10 @@ class MyDataset:
             "masks": masks,
             "input_ids": input_ids,
         }
+
+        if args.loss == "CaPO":
+            batch["win_scores"] = torch.tensor(win_scores, dtype=torch.float32)
+            batch["lose_scores"] = torch.tensor(lose_scores, dtype=torch.float32)
 
         if self.model_type == "brushnet":
             conditioning_pixel_values = torch.stack(conditioning_pixel_values)
@@ -1648,6 +1692,7 @@ def main(args, model_type):
     logger.info(f"[{accelerator.process_index}]  mse loss weight = {args.mse_loss_weight}")
     logger.info(f"[{accelerator.process_index}]  learning rate = {args.learning_rate}")
     logger.info(f"[{accelerator.process_index}]  loss = {args.dpo_loss_weight} * dpo_loss + {args.mse_loss_weight} * mse_loss")
+    logger.info(f"[{accelerator.process_index}]  preference loss type = {args.loss}")
     logger.info(f"[{accelerator.process_index}]  Metric = {args.metrics.metric}" if args.metrics.enable else f"[{accelerator.process_index}] metrics are disabled")
     logger.info(f"[{accelerator.process_index}]  Scaling = {args.metrics.scaling}" if args.metrics.enable else f"[{accelerator.process_index}] metrics scaling is not used")
     logger.info(f"[{accelerator.process_index}]  Image annotation file = {args.train_json_dir}")
@@ -1747,15 +1792,23 @@ def main(args, model_type):
                         batch["masks"],
                         batch["input_ids"],
                     )
+                    if args.loss == "CaPO":
+                        win_scores = batch["win_scores"].to(device=accelerator.device)
+                        lose_scores = batch["lose_scores"].to(device=accelerator.device)
 
                     if not args.metrics.enable:
                         loss_pixel_values = (
                             1 - batch["masks"]
                         ) * loss_pixel_values + batch["masks"] * win_pixel_values
 
-                    feed_in_image = torch.cat(
-                        [win_pixel_values, loss_pixel_values], dim=0
-                    )
+                    if args.dpo_new:
+                        feed_in_image = torch.cat(
+                            [loss_pixel_values, win_pixel_values], dim=0
+                        )
+                    else:
+                        feed_in_image = torch.cat(
+                            [win_pixel_values, loss_pixel_values], dim=0
+                        )
 
                     feed_in_image = image_processor.preprocess(
                         feed_in_image, height=args.height, width=args.width
@@ -1856,7 +1909,8 @@ def main(args, model_type):
                     noise = torch.randn_like(
                         model_input, device=accelerator.device, dtype=weight_dtype
                     )
-                    noise = noise.chunk(2)[0].repeat(2, 1, 1, 1)
+                    if args.loss == "dpo":
+                        noise = noise.chunk(2)[0].repeat(2, 1, 1, 1)
                     bsz = model_input.shape[0]
 
                     u = compute_density_for_timestep_sampling(
@@ -1971,11 +2025,19 @@ def main(args, model_type):
 
                     scale_term = -0.5 * args.beta_dpo
                     inside_term = scale_term * (model_diff - ref_diff)
-                    dpo_loss = -1 * F.logsigmoid(inside_term).mean()
+                    if args.loss == "dpo":
+                        dpo_loss = -1 * F.logsigmoid(inside_term).mean()
+                        loss = dpo_loss
+                    else:
+                        score_delta = (win_scores - lose_scores).to(dtype=inside_term.dtype)
+                        capo_loss = (score_delta - inside_term).pow(2).mean()
+                        loss = capo_loss
 
-                    loss = dpo_loss
-
-                    avg_dpo_loss = accelerator.gather(dpo_loss).mean().item()
+                    avg_dpo_loss = (
+                        accelerator.gather(dpo_loss).mean().item()
+                        if args.loss == "dpo"
+                        else accelerator.gather(capo_loss).mean().item()
+                    )
                     avg_model_mse = accelerator.gather(raw_model_loss).mean().item()
 
                     if args.do_test and not torch.isfinite(loss.detach()).all():
@@ -2028,6 +2090,9 @@ def main(args, model_type):
                             batch["pixel_values"],
                             batch["inpainting_pixel_values"],
                         )
+                        if args.loss == "CaPO":
+                            win_scores = batch["win_scores"].to(device=accelerator.device)
+                            lose_scores = batch["lose_scores"].to(device=accelerator.device)
                         if not args.metrics.enable:
                             inpainting_pixel_values = (
                                 1 - batch["masks"]
@@ -2162,7 +2227,8 @@ def main(args, model_type):
                         )
                         timesteps = timesteps.long()
                         timesteps = timesteps.chunk(2)[0].repeat(2)
-                        noise = noise.chunk(2)[0].repeat(2, 1, 1, 1)
+                        if args.loss == "dpo":
+                            noise = noise.chunk(2)[0].repeat(2, 1, 1, 1)
 
                         noisy_latents = noise_scheduler.add_noise(
                             latents, noise, timesteps
@@ -2269,11 +2335,20 @@ def main(args, model_type):
                         scale_term = -0.5 * args.beta_dpo
                         inside_term = scale_term * (model_diff - ref_diff)
 
-                        dpo_loss = -1 * F.logsigmoid(inside_term).mean()
-                        loss = dpo_loss
+                        if args.loss == "dpo":
+                            dpo_loss = -1 * F.logsigmoid(inside_term).mean()
+                            loss = dpo_loss
+                        else:
+                            score_delta = (win_scores - lose_scores).to(dtype=inside_term.dtype)
+                            capo_loss = (score_delta - inside_term).pow(2).mean()
+                            loss = capo_loss
 
                     avg_loss = accelerator.gather(loss).mean().item()
-                    avg_dpo_loss = accelerator.gather(dpo_loss).mean().item()
+                    avg_dpo_loss = (
+                        accelerator.gather(dpo_loss).mean().item()
+                        if args.loss == "dpo"
+                        else accelerator.gather(capo_loss).mean().item()
+                    )
                     avg_raw_model_mse = accelerator.gather(raw_model_loss).mean().item()
                     avg_ref_mse = accelerator.gather(raw_ref_loss).mean().item()
 
@@ -2452,11 +2527,11 @@ def main(args, model_type):
                     f"global_step: {global_step} / {args.max_train_steps}, step_loss: {loss.detach().item()}, lr: {lr_scheduler.get_last_lr()[0]}"
                 )
 
-            if global_step >= args.train_steps:
-                accelerator.wait_for_everyone()
-                accelerator.end_training()
-                if args.do_test:
-                    return
+            if global_step >= args.max_train_steps:
+                break
+
+        if global_step >= args.max_train_steps:
+            break
 
     # -----------------------------------------------------------------------
     # Final save
