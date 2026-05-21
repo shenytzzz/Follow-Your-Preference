@@ -250,23 +250,27 @@ We released our models on the huggingface, feel free to have a try 😉.
 
 ### 🏋️ Preference Alignment Training 
 
-- For training, we use config files to manage everthing. You could find it in `configs/configs_<model>.yaml`.
+- For training, we use a single config file `configs/configs_dpo.yaml` for both models. Set `model_type: flux` or `model_type: brushnet` at the top of the file to select which model to train. Per-model overrides live under `train.flux` / `train.brushnet` and are merged on top of the shared defaults at runtime.
 
 - FLUX.1 Fill
   ```bash
   conda activate train
+  # set `model_type: flux` in configs/configs_dpo.yaml
   accelerate launch \
     --config_file configs/accelerate_flux.yaml \
-    scripts/train_flux_dpo.py
+    scripts/train_dpo.py
   ```
 
 - BrushNet
   ```bash
   conda activate train
+  # set `model_type: brushnet` in configs/configs_dpo.yaml
   accelerate launch \
     --config_file configs/accelerate_default.yaml \
-    scripts/train_brushnet_dpo.py
+    scripts/train_dpo.py
   ```
+
+- The original per-model scripts (`scripts/train_flux_dpo.py`, `scripts/train_brushnet_dpo.py`) and their configs (`configs/configs_flux.yaml`, `configs/configs_brushnet.yaml`) remain available as a reference.
 
 ### 💯 Evaluation 
 1. Generate images for testing

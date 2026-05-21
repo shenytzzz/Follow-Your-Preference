@@ -50,8 +50,16 @@ from omegaconf import OmegaConf
 import datetime
 
 
-full_args = OmegaConf.load("/root/flux/configs/configs.yaml")
-args = full_args.sample
+def resolve_config(full_cfg, section, model_type):
+    section_cfg = OmegaConf.to_container(full_cfg[section], resolve=True)
+    overrides = section_cfg.pop(model_type)
+    section_cfg.pop('flux', None)
+    section_cfg.pop('brushnet', None)
+    return OmegaConf.merge(OmegaConf.create(section_cfg), OmegaConf.create(overrides))
+
+
+full_args = OmegaConf.load("/root/test_env/configs/configs_dpo.yaml")
+args = resolve_config(full_args, 'sample', 'flux')
 logging_dir = os.path.join(args.output_dir, args.logging_dir)
 accelerator_project_config = ProjectConfiguration(project_dir=args.output_dir, logging_dir=logging_dir)  # type: ignore
 accelerator = Accelerator(

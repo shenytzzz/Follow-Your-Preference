@@ -66,8 +66,16 @@ if is_wandb_available():
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
 # check_min_version("0.27.0.dev0")
 
-full_args = OmegaConf.load("/root/BrushNet/configs/configs.yaml")
-args = full_args.sample
+def resolve_config(full_cfg, section, model_type):
+    section_cfg = OmegaConf.to_container(full_cfg[section], resolve=True)
+    overrides = section_cfg.pop(model_type)
+    section_cfg.pop('flux', None)
+    section_cfg.pop('brushnet', None)
+    return OmegaConf.merge(OmegaConf.create(section_cfg), OmegaConf.create(overrides))
+
+
+full_args = OmegaConf.load("/root/test_env/configs/configs_dpo.yaml")
+args = resolve_config(full_args, 'sample', 'brushnet')
 logging_dir = Path(args.output_dir, args.logging_dir)
 accelerator_project_config = ProjectConfiguration(
     project_dir=args.output_dir, logging_dir=logging_dir
