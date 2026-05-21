@@ -244,7 +244,33 @@ We released our models on the huggingface, feel free to have a try 😉.
       --port <port_you_specify_when_launching_vllm>
     ```
 4. Merge scores into one json file
-   - Continue in `scripts/merge_score_jsons.ipynb` to attach scores to annotations for training.
+   - Continue in `scripts/merge_score_jsons.ipynb` to attach scores to annotations for training, or use `tool.py` for the same notebook-compatible processing as reusable CLI commands.
+   - Common `tool.py` commands:
+     ```bash
+     # Merge per-image annotations from one seed folder.
+     python tool.py merge-annotations \
+       --seed-dir /path/to/samples/local_seed_0 \
+       --out-dir /path/to/samples/annotations
+
+     # Merge reward-model scores and add per-metric max/min seed fields.
+     python tool.py merge-scores \
+       --score-base /path/to/scores \
+       --score-types hps vqa_score clip_score pick_score aesthetic_score image_reward unified_reward pe_score hpsv3 \
+       --out-dir /path/to/scores/result
+
+     # Build the ensemble score and rank fields.
+     python tool.py create-ensemble \
+       --input-file /path/to/scores/result/new_results.json \
+       --score-types hps vqa_score clip_score pick_score aesthetic_score image_reward unified_reward pe_score hpsv3 \
+       --out-file /path/to/scores/result/new_results_with_ensemble.json
+
+     # Calculate CaEN with the default notebook weights.
+     python tool.py calculate-caen \
+       --input-file /path/to/scores/result/new_results_with_ensemble.json \
+       --score-types hps vqa_score clip_score pick_score aesthetic_score image_reward unified_reward pe_score hpsv3 \
+       --out-file /path/to/scores/result/new_results_caen.json
+     ```
+   - `tool.py` follows the notebook behavior for max/min tie handling, seed-count checks, CaPO/CaEN calculation, and the default CaEN weights.
    - For CaEN/CaPO training, the merged score file should be keyed by `image_id` and contain the CaEN score for each candidate seed, for example:
      ```json
      {
